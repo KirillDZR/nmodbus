@@ -83,21 +83,22 @@ namespace Modbus.Data
 	    public static T ReadData<T, U>(DataStore dataStore, ModbusDataCollection<U> dataSource, ushort startAddress,
 	        ushort count, object syncRoot, bool sendEvent = true) where T : Collection<U>, new()
 	    {
-			int startIndex = startAddress + 1;
+            int startIndex = startAddress + 1;
 
+            // Start address was out of range. Must be non-negative and <= the size of the collection.
 	        if (startIndex >= dataSource.Count)
-	            throw new ArgumentOutOfRangeException(
-	                "Start address was out of range. Must be non-negative and <= the size of the collection.");
+	            throw new ArgumentOutOfRangeException("startAddress");
 
+            // Read is outside valid range.
 			if (dataSource.Count < startIndex + count)
-				throw new ArgumentOutOfRangeException("Read is outside valid range.");
+				throw new ArgumentOutOfRangeException("startAddress");
 
 			U[] dataToRetrieve;
 			lock (syncRoot)
 				dataToRetrieve = dataSource.Slice(startIndex, count).ToArray();
 
-			T result = new T();
-			for (int i = 0; i < count; i++)
+			var result = new T();
+			for (var i = 0; i < count; i++)
 				result.Add(dataToRetrieve[i]);
 
 		    if (sendEvent)
@@ -123,15 +124,15 @@ namespace Modbus.Data
 	    public static void WriteData<TData>(DataStore dataStore, IEnumerable<TData> items,
 	        ModbusDataCollection<TData> destination, ushort startAddress, object syncRoot, bool sendEvent = true)
 	    {
-	        int startIndex = startAddress + 1;
+            var startIndex = startAddress + 1;
 
+            // Start address was out of range. Must be non-negative and <= the size of the collection.
 	        if (startIndex >= destination.Count)
-	            throw new ArgumentOutOfRangeException(
-	                "Start address was out of range. Must be non-negative and <= the size of the collection.");
+	            throw new ArgumentOutOfRangeException("startAddress");
 
+            // Items collection is too large to write at specified start index.
 	        if (destination.Count < startIndex + items.Count())
-	            throw new ArgumentOutOfRangeException(
-                    "Items collection is too large to write at specified start index.");
+	            throw new ArgumentOutOfRangeException("startAddress");
 
 	        lock (syncRoot)
 	            Update(items, destination, startIndex);
@@ -155,7 +156,7 @@ namespace Modbus.Data
 	    {
             lock (dataStore.SyncRoot)
 	        {
-	            return dataSource[index + 1];
+                return dataSource[index + 1];
 	        }
 	    }
 
@@ -186,9 +187,9 @@ namespace Modbus.Data
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static void Update<T>(IEnumerable<T> items, IList<T> destination, int startIndex)
 		{
+            // Index was out of range. Must be non-negative and less than the size of the collection.
 			if (startIndex < 0 || destination.Count < startIndex + items.Count())
-				throw new ArgumentOutOfRangeException(
-                    "Index was out of range. Must be non-negative and less than the size of the collection.");
+				throw new ArgumentOutOfRangeException("startIndex");
 
 			items.ForEachWithIndex((item, index) => destination[index + startIndex] = item);
 		}

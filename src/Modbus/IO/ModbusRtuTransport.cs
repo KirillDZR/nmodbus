@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Threading.Tasks;
 using Modbus.Device;
 using Modbus.Message;
 using Modbus.Utility;
@@ -22,6 +23,13 @@ namespace Modbus.IO
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 
 		private Func<Type, IModbusMessageRtu> _instanceCache = FunctionalUtility.Memoize((Type type) => (IModbusMessageRtu) Activator.CreateInstance(type));
+
+        private static readonly byte[] FunctionCode =
+        {
+            Modbus.ReadCoils, Modbus.ReadInputs, Modbus.ReadHoldingRegisters,
+            Modbus.ReadInputRegisters, Modbus.WriteSingleCoil, Modbus.WriteSingleRegister,
+            Modbus.Diagnostics, Modbus.WriteMultipleCoils, Modbus.WriteMultipleRegisters, Modbus.ReadFiles
+        };
 
 		internal ModbusRtuTransport(IStreamResource streamResource)
 			: base(streamResource)
@@ -59,11 +67,11 @@ namespace Modbus.IO
 					var byteCount = frameStart[6];
 					numBytes = byteCount + 2;
                     break;
-                case 0x14:
+                case Modbus.ReadFiles:
                     numBytes = frameStart[2] - 2;
                     break;
 				default:
-					var errorMessage = String.Format(CultureInfo.InvariantCulture, "Function code {0} not supported.", functionCode);
+                    var errorMessage = String.Format(CultureInfo.InvariantCulture, "Function code {0} not supported. {1}", functionCode, String.Join(", ", frameStart));
                     Logger.Error(errorMessage);
 					throw new NotImplementedException(errorMessage);
 			}
@@ -102,7 +110,7 @@ namespace Modbus.IO
 				case Modbus.Diagnostics:
 					numBytes = 4;
                     break;
-                case 0x14:
+                case Modbus.ReadFiles:
                     numBytes = frameStart[2] + 2;
                     break;
 				default:
@@ -151,13 +159,38 @@ namespace Modbus.IO
 		}
 
 		internal override byte[] ReadRequest(ModbusSlave slave)
-		{
-			var frameStart = Read(RequestFrameStartLength);
-			var frameEnd = Read(RequestBytesToRead(frameStart, slave));
-			var frame = frameStart.Concat(frameEnd).ToArray();
-            Logger.Info("RX: {0}", frame.Join(", "));
+        {
+            var frame = new byte[] { };
+            var _continue = true;
 
-			return frame;
-		}
+            while (_continue && !slave.Cts.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    var buff = Read(RequestFrameStartLength);
+
+                    Logger.Trace("BUFF: {0}", buff.Join(", "));
+
+                    for (var offset = 0; offset < (buff.Length - 1) && _continue; offset++)
+                    {
+                        if (buff[offset] != slave.UnitId || !FunctionCode.Contains(buff[offset + 1])) continue;
+
+                        var frameStart =
+                            buff.Skip(offset).Concat(Read(RequestFrameStartLength - buff.Length + offset)).ToArray();
+                        var frameEnd = Read(RequestBytesToRead(frameStart, slave));
+                        frame = frameStart.Concat(frameEnd).ToArray();
+                        _continue = BitConverter.ToUInt16(frame, frame.Length - 2) !=
+                                    BitConverter.ToUInt16(
+                                        ModbusUtility.CalculateCrc(frame.Take(frame.Length - 2).ToArray()), 0);
+                    }
+                }
+                catch (TimeoutException)
+                {
+                    if (slave.Cts.Token.IsCancellationRequested) break;
+                }
+            }
+
+            return frame;
+        }
 	}
 }

@@ -54,7 +54,7 @@ namespace Modbus.IO
 			if (CheckFrame && !ChecksumsMatch(response, frame))
 			{
 				string errorMessage = String.Format(
-                    CultureInfo.InvariantCulture, "Checksums failed to match {0} != {1}", response.MessageFrame.Join(", "), frame.Join(", "));
+                    CultureInfo.InvariantCulture, "Checksums failed to match {0} ({1})", response.MessageFrame.Join(", "), frame.Join(", "));
                 Logger.Error(errorMessage);
 				throw new IOException(errorMessage);
 			}

@@ -159,10 +159,9 @@ namespace Modbus.Device
 				if (socketException != null && socketException.ErrorCode == Modbus.ConnectionResetByPeer)
 				{
                     Logger.Debug("Socket Exception ConnectionResetByPeer, Master closed connection.");
-					return;
 				}
 
-				throw;
+                Logger.Debug("Socket Exception, Master closed connection.");
 			}
 			catch (Exception e)
 			{
@@ -170,7 +169,6 @@ namespace Modbus.Device
                 var responseFrame = Transport.BuildMessageFrame(new SlaveExceptionResponse());
                 Logger.Info("ERROR TX: {0}", responseFrame.Join(", "));
                 Stream.BeginWrite(responseFrame, 0, responseFrame.Length, WriteCompleted, null);
-				throw;
 			}
 		}
 	}

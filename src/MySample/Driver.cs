@@ -31,8 +31,8 @@ namespace MySample
                 //StartModbusTcpSlave();
                 //StartModbusUdpSlave();	
                 //StartModbusSerialAsciiSlave();
-                //StartModbusSerialRtuSlave();
-                StartModbusTcpSlaveFileRead();
+                StartModbusSerialRtuSlave();
+                //StartModbusTcpSlaveFileRead();
             }
             catch (Exception e)
             {
@@ -228,7 +228,7 @@ namespace MySample
         /// </summary>
         public static void StartModbusSerialRtuSlave()
         {
-            using (var slavePort = new SerialPort("COM3"))
+            using (var slavePort = new SerialPort("COM1"))
             {
                 // configure serial port
                 slavePort.BaudRate = 9600;
@@ -438,6 +438,7 @@ namespace MySample
             try
             {
                 const byte slaveId = 1;
+                /*
                 const int port = 502;
                 var address = new IPAddress(new byte[] {127, 0, 0, 1});
 
@@ -446,12 +447,25 @@ namespace MySample
                 slaveTcpListener.Start();
 
                 ModbusSlave slave = ModbusTcpSlave.CreateTcp(slaveId, slaveTcpListener);
+                */
+
+                var slavePort = new SerialPort("COM1")
+                {
+                    BaudRate = 38400,
+                    DataBits = 8,
+                    Parity = Parity.None,
+                    StopBits = StopBits.One
+                };
+                slavePort.Open();
+
+                ModbusSlave slave = ModbusSerialSlave.CreateRtu(slaveId, slavePort);
+
                 slave.DataStore = DataStoreFactory.CreateDefaultDataStore();
 
-                slave.RegisterCustomFunction<ReadFileRequest>(0x14,
+                slave.RegisterCustomFunction<ReadFileRequest>(Modbus.Modbus.ReadFiles,
                     (request, dataStore) =>
                     {
-                        if (request.FunctionCode != 0x14)
+                        if (request.FunctionCode != Modbus.Modbus.ReadFiles)
                         {
                             return new SlaveExceptionResponse(request.SlaveAddress, 0x94, 0x01);
                         }
@@ -473,8 +487,8 @@ namespace MySample
                                 foreach (var record in request.Data)
                                 {
                                     var buffer = new byte[record.RecordLength * 2];
-                                    file.Position = record.RecordNumber * record.RecordLength * 2;
-                                    var count = file.Read(buffer, 0, record.RecordLength * 2);
+                                    file.Position = record.RecordNumber * buffer.Length;
+                                    var count = file.Read(buffer, 0, buffer.Length);
                                     response.AddRecordData(buffer, count);
                                 }
                             }

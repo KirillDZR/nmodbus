@@ -4,6 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
+using JetBrains.Annotations;
 using Modbus.Data;
 using Modbus.IO;
 using Modbus.Message;
@@ -17,6 +19,11 @@ namespace Modbus.Device
 	/// </summary>
 	public abstract class ModbusSlave : ModbusDevice
 	{
+	    /// <summary>
+	    /// 
+	    /// </summary>
+	    [NotNull]
+        public CancellationTokenSource Cts = new CancellationTokenSource();
         private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
 		private readonly Dictionary<byte, CustomMessageInfo> _customMessages = new Dictionary<byte, CustomMessageInfo>();
 

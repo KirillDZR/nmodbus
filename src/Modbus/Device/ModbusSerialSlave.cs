@@ -83,7 +83,7 @@ namespace Modbus.Device
 	    /// </summary>
 	    public override void Listen()
 	    {
-	        while (true)
+            while (!Cts.Token.IsCancellationRequested)
 	        {
 	            try
 	            {
@@ -91,6 +91,11 @@ namespace Modbus.Device
 	                {
 	                    // read request and build message
                         var frame = SerialTransport.ReadRequest(this);
+
+                        if (frame == null || frame.Length == 0) continue;
+
+                        Logger.Info("RX: {0}", frame.Join(", "));
+
 	                    IModbusMessage request = ModbusMessageFactory.CreateModbusRequest(this, frame);
 
 	                    if (SerialTransport.CheckFrame && !SerialTransport.ChecksumsMatch(request, frame))
@@ -139,7 +144,7 @@ namespace Modbus.Device
 	                Logger.Error("Exception - {0}", e.Message);
 			        //SerialTransport.Write(new SlaveExceptionResponse());
                     SerialTransport.DiscardInBuffer();
-                    throw;
+                    //throw;
 	            }
 	        }
 	    }

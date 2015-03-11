@@ -50,6 +50,10 @@ namespace Modbus
         /// <summary>
         /// 
         /// </summary>
+	    public const byte ReadFiles = 20;
+        /// <summary>
+        /// 
+        /// </summary>
 		public const byte ReadWriteMultipleRegisters = 23;
 
         /// <summary>

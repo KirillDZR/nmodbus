@@ -24,7 +24,7 @@ namespace Modbus.Message
         public ReadFileResponse()
         {
             _data = new List<byte>();
-            FunctionCode = 0x14;
+            FunctionCode = Modbus.ReadFiles;
         }
 
         /// <summary>

@@ -72,7 +72,7 @@ namespace Modbus.Device
 		/// </summary>
 		public override void Listen()
 		{
-            Logger.Debug("Start Modbus Tcp Server.");
+            //Logger.Debug("Start Modbus Tcp Server.");
 
 			lock (_serverLock)
 			{
@@ -80,13 +80,13 @@ namespace Modbus.Device
 				{
 					Server.Start();
 
-					// use Socket async API for compact framework compat
-					Server.Server.BeginAccept(AcceptCompleted, this);
+				    // use Socket async API for compact framework compat
+                    Server.Server.BeginAccept(AcceptCompleted, this);
 				}
 				catch (ObjectDisposedException)
 				{
 					// this happens when the server stops
-				}
+                }
 			}
 		}
 
@@ -105,32 +105,38 @@ namespace Modbus.Device
 		{
 			var slave = (ModbusTcpSlave) ar.AsyncState;
 
-			try
-			{
-				// use Socket async API for compact framework compat
-				Socket socket;
-				lock (_serverLock)
-					socket = Server.Server.EndAccept(ar);
+		    try
+		    {
+		        // use Socket async API for compact framework compat
+		        Socket socket;
+		        lock (_serverLock)
+		            socket = Server.Server.EndAccept(ar);
 
-				var client = new TcpClient { Client = socket };
-				var masterConnection = new ModbusMasterTcpConnection(client, slave);
-				masterConnection.ModbusMasterTcpConnectionClosed += (sender, eventArgs) => RemoveMaster(eventArgs.EndPoint);
+		        var client = new TcpClient {Client = socket};
+		        var masterConnection = new ModbusMasterTcpConnection(client, slave);
+		        masterConnection.ModbusMasterTcpConnectionClosed += (sender, eventArgs) => RemoveMaster(eventArgs.EndPoint);
 
-				lock (_mastersLock)
-					_masters.Add(client.Client.RemoteEndPoint.ToString(), masterConnection);
+		        lock (_mastersLock)
+		            _masters.Add(client.Client.RemoteEndPoint.ToString(), masterConnection);
 
                 Logger.Debug("Accept completed.");
+            }
+		    catch (ObjectDisposedException)
+		    {
+		        // this happens when the server stops
+            }
+            catch (Exception e)
+            {
+                Logger.Error("Exception", e);
+            }
 
-				// Accept another client
-				// use Socket async API for compact framework compat
-				lock (_serverLock)
-					Server.Server.BeginAccept(AcceptCompleted, slave);
-			}
-			catch (ObjectDisposedException)
-			{
-				// this happens when the server stops
-			}
-		}
+            if (Cts.Token.IsCancellationRequested) return;
+
+            // Accept another client
+            // use Socket async API for compact framework compat
+            lock (_serverLock)
+                Server.Server.BeginAccept(AcceptCompleted, slave);
+        }
 
 		/// <summary>
 		/// Releases unmanaged and - optionally - managed resources
